@@ -1,0 +1,46 @@
+# Multi-stage build for better image size and Snappy compatibility
+FROM maven:3.9.4-eclipse-temurin-21 AS builder
+
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Runtime stage with Eclipse Temurin (includes glibc needed for Snappy compression)
+FROM eclipse-temurin:21-jre
+
+# Install necessary packages for healthcheck
+RUN apt-get update && \
+    apt-get install -y net-tools && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create app directory and user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+WORKDIR /app
+
+# Copy the jar from builder stage
+COPY --from=builder /app/target/teuthis-*.jar teuthis.jar
+
+# Change ownership to appuser
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD netstat -tlnp | grep :8080 || exit 1
+
+# Run the application with JVM optimizations
+ENTRYPOINT ["java", \
+    "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:+UseG1GC", \
+    "-XX:+UseStringDeduplication", \
+    "-jar", "teuthis.jar"]

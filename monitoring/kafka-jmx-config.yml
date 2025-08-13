@@ -1,0 +1,102 @@
+# Kafka JMX Metrics Configuration for Prometheus
+startDelaySeconds: 0
+ssl: false
+lowercaseOutputName: false
+lowercaseOutputLabelNames: false
+
+# Whitelist important Kafka metrics
+whitelistObjectNames:
+  - kafka.server:type=BrokerTopicMetrics,name=MessagesInPerSec
+  - kafka.server:type=BrokerTopicMetrics,name=BytesInPerSec
+  - kafka.server:type=BrokerTopicMetrics,name=BytesOutPerSec
+  - kafka.server:type=ReplicaManager,name=LeaderCount
+  - kafka.server:type=ReplicaManager,name=PartitionCount
+  - kafka.server:type=KafkaRequestHandlerPool,name=RequestHandlerAvgIdlePercent
+  - kafka.network:type=RequestMetrics,name=RequestsPerSec,request=Produce
+  - kafka.network:type=RequestMetrics,name=RequestsPerSec,request=FetchConsumer
+  - kafka.network:type=RequestMetrics,name=TotalTimeMs,request=Produce
+  - kafka.network:type=RequestMetrics,name=TotalTimeMs,request=FetchConsumer
+  - kafka.server:type=ReplicaFetcherManager,name=MaxLag,clientId=Replica
+  - kafka.controller:type=KafkaController,name=OfflinePartitionsCount
+  - kafka.controller:type=ControllerStats,name=LeaderElectionRateAndTimeMs
+  - kafka.server:type=SessionExpireListener,name=ZooKeeperExpiresPerSec
+  - kafka.log:type=LogFlushStats,name=LogFlushRateAndTimeMs
+  - java.lang:type=Memory
+  - java.lang:type=GarbageCollector,name=*
+  - java.lang:type=Threading
+  - java.lang:type=OperatingSystem
+
+# Rules to transform JMX metrics to Prometheus format
+rules:
+  # Kafka Server Metrics
+  - pattern: kafka.server<type=(.+), name=(.+)PerSec\w*><>Count
+    name: kafka_server_$1_$2_total
+    type: COUNTER
+
+  - pattern: kafka.server<type=(.+), name=(.+)PerSec\w*, (.+)=(.+)><>Count
+    name: kafka_server_$1_$2_total
+    type: COUNTER
+    labels:
+      "$3": "$4"
+
+  - pattern: kafka.server<type=(.+), name=(.+), (.+)=(.+)><>Value
+    name: kafka_server_$1_$2
+    labels:
+      "$3": "$4"
+
+  # Network Request Metrics  
+  - pattern: kafka.network<type=(.+), name=(.+), request=(.+)><>Count
+    name: kafka_network_$1_$2_total
+    type: COUNTER
+    labels:
+      request: "$3"
+
+  - pattern: kafka.network<type=(.+), name=(.+), request=(.+)><>(\w+)
+    name: kafka_network_$1_$2_$4
+    labels:
+      request: "$3"
+
+  # Controller Metrics
+  - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+    name: kafka_controller_$1_$2
+
+  - pattern: kafka.controller<type=(.+), name=(.+)><>Count
+    name: kafka_controller_$1_$2_total
+    type: COUNTER
+
+  # Log Metrics
+  - pattern: kafka.log<type=(.+), name=(.+)><>Count
+    name: kafka_log_$1_$2_total
+    type: COUNTER
+
+  - pattern: kafka.log<type=(.+), name=(.+)><>Value
+    name: kafka_log_$1_$2
+
+  # JVM Metrics
+  - pattern: java.lang<type=Memory><HeapMemoryUsage>(\w+)
+    name: jvm_memory_heap_$1
+    type: GAUGE
+
+  - pattern: java.lang<type=Memory><NonHeapMemoryUsage>(\w+)
+    name: jvm_memory_nonheap_$1
+    type: GAUGE
+
+  - pattern: java.lang<type=GarbageCollector, name=(.+)><>CollectionCount
+    name: jvm_gc_collection_total
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: java.lang<type=GarbageCollector, name=(.+)><>CollectionTime
+    name: jvm_gc_collection_time_total
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: java.lang<type=Threading><>(\w+)
+    name: jvm_threads_$1
+    type: GAUGE
+
+  - pattern: java.lang<type=OperatingSystem><>(\w+)
+    name: jvm_os_$1
+    type: GAUGE

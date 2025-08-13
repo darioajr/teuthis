@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "Message",
+  "namespace": "com.github.darioajr.teuthis.avro",
+  "fields": [
+    {"name": "format", "type": "string"},
+    {"name": "payload", "type": "bytes"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "hostname", "type": "string"}
+  ]
+}

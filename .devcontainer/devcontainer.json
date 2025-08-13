@@ -1,0 +1,43 @@
+{
+    "name": "Java Container Development",
+    "build": {
+        "dockerfile": "./Dockerfile",
+        "context": "."
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "version": "latest",
+            "enableNonRootDocker": "true"
+        }
+    },
+    "containerEnv": {
+        "JAVA_HOME": "/opt/java/openjdk"
+    },
+    "forwardPorts": [8080],
+    "postCreateCommand": "chmod +x mvnw",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "maven.executable.preferMavenWrapper": true,
+                "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m -Xlog:disable",
+                "java.jdt.ls.java.home": "/opt/java/openjdk",
+                "java.configuration.updateBuildConfiguration": "automatic",
+                "java.configuration.runtimes": [
+                    {
+                        "name": "JavaSE-21",
+                        "path": "/opt/java/openjdk"
+                    }
+                ]
+            },
+            "extensions": [
+                "redhat.java",
+                "vscjava.vscode-java-pack",
+                "ms-vscode.vscode-json"
+            ]
+        }
+    },
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "remoteUser": "root"
+}

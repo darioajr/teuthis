@@ -1,0 +1,28 @@
+{
+  "type": "record",
+  "name": "Message",
+  "namespace": "com.github.darioajr.teuthis.avro",
+  "doc": "Teuthis message schema",
+  "fields": [
+    {
+      "name": "format",
+      "type": "string",
+      "doc": "Message format (json, xml, soap, txt)"
+    },
+    {
+      "name": "payload",
+      "type": "bytes",
+      "doc": "Message payload as bytes"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "Message timestamp in milliseconds"
+    },
+    {
+      "name": "hostname",
+      "type": "string",
+      "doc": "Source hostname"
+    }
+  ]
+}

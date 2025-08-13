@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    
+    <!-- Console Appender para desenvolvimento -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level [%X{requestId:-}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Async File Appender para aplicação principal -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/teuthis.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/teuthis.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{requestId:-}] [%X{clientIp:-}] [%X{topic:-}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Async File Appender para performance -->
+    <appender name="PERFORMANCE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/performance.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/performance.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Async File Appender para segurança -->
+    <appender name="SECURITY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/security.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/security.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{clientIp:-}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Async Wrappers para alta performance -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <queueSize>1024</queueSize>
+        <discardingThreshold>20</discardingThreshold>
+        <maxFlushTime>1000</maxFlushTime>
+        <neverBlock>true</neverBlock>
+    </appender>
+    
+    <appender name="ASYNC_PERFORMANCE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="PERFORMANCE_FILE"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <maxFlushTime>500</maxFlushTime>
+        <neverBlock>true</neverBlock>
+    </appender>
+    
+    <appender name="ASYNC_SECURITY" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="SECURITY_FILE"/>
+        <queueSize>256</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <maxFlushTime>1000</maxFlushTime>
+        <neverBlock>false</neverBlock>
+    </appender>
+    
+    <!-- Logger específico para performance -->
+    <logger name="performance" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_PERFORMANCE"/>
+    </logger>
+    
+    <!-- Logger específico para segurança -->
+    <logger name="security" level="WARN" additivity="false">
+        <appender-ref ref="ASYNC_SECURITY"/>
+    </logger>
+    
+    <!-- Logger específico para Kafka (reduzir verbosidade) -->
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="org.apache.avro" level="WARN"/>
+    <logger name="io.netty" level="INFO"/>
+    
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+    </root>
+    
+</configuration>

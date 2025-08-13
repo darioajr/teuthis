@@ -1,0 +1,97 @@
+groups:
+  - name: teuthis_resources
+    rules:
+      - alert: TeuthisCpuUsageHigh
+        expr: teuthis_cpu_usage > scalar(teuthis_resource_threshold)
+        for: 2m
+        labels:
+          severity: critical
+          service: teuthis
+          resource: cpu
+        annotations:
+          summary: "Teuthis CPU usage is critically high"
+          description: "CPU usage is {{ printf \"%.1f\" (mul $value 100) }}% which exceeds the {{ printf \"%.1f\" (mul (query \"teuthis_resource_threshold\" | first | value) 100) }}% threshold"
+          
+      - alert: TeuthisMemoryUsageHigh
+        expr: teuthis_memory_usage > scalar(teuthis_resource_threshold)
+        for: 2m
+        labels:
+          severity: critical
+          service: teuthis
+          resource: memory
+        annotations:
+          summary: "Teuthis Memory usage is critically high"
+          description: "Memory usage is {{ printf \"%.1f\" (mul $value 100) }}% which exceeds the {{ printf \"%.1f\" (mul (query \"teuthis_resource_threshold\" | first | value) 100) }}% threshold"
+          
+      - alert: TeuthisDiskUsageHigh
+        expr: teuthis_disk_usage > scalar(teuthis_resource_threshold)
+        for: 2m
+        labels:
+          severity: critical
+          service: teuthis
+          resource: disk
+        annotations:
+          summary: "Teuthis Disk usage is critically high"
+          description: "Disk usage is {{ printf \"%.1f\" (mul $value 100) }}% which exceeds the {{ printf \"%.1f\" (mul (query \"teuthis_resource_threshold\" | first | value) 100) }}% threshold"
+          
+      - alert: TeuthisResourcesOverThreshold
+        expr: (teuthis_cpu_usage > scalar(teuthis_resource_threshold)) or (teuthis_memory_usage > scalar(teuthis_resource_threshold)) or (teuthis_disk_usage > scalar(teuthis_resource_threshold))
+        for: 1m
+        labels:
+          severity: warning
+          service: teuthis
+        annotations:
+          summary: "Teuthis is rejecting requests due to high resource usage"
+          description: |
+            Teuthis is rejecting requests due to high resource usage (threshold: {{ printf "%.1f" (mul (query "teuthis_resource_threshold" | first | value) 100) }}%):
+            CPU: {{ printf "%.1f" (query "teuthis_cpu_usage * 100" | first | value) }}%
+            Memory: {{ printf "%.1f" (query "teuthis_memory_usage * 100" | first | value) }}%
+            Disk: {{ printf "%.1f" (query "teuthis_disk_usage * 100" | first | value) }}%
+            
+      - alert: TeuthisSpecificResourceHigh
+        expr: |
+          (teuthis_cpu_usage > scalar(teuthis_resource_threshold) and on() (teuthis_cpu_usage > teuthis_memory_usage) and on() (teuthis_cpu_usage > teuthis_disk_usage)) or
+          (teuthis_memory_usage > scalar(teuthis_resource_threshold) and on() (teuthis_memory_usage > teuthis_cpu_usage) and on() (teuthis_memory_usage > teuthis_disk_usage)) or
+          (teuthis_disk_usage > scalar(teuthis_resource_threshold) and on() (teuthis_disk_usage > teuthis_cpu_usage) and on() (teuthis_disk_usage > teuthis_memory_usage))
+        for: 1m
+        labels:
+          severity: critical
+          service: teuthis
+        annotations:
+          summary: "Specific Teuthis resource is critically high"
+          description: |
+            {{ if gt (query "teuthis_cpu_usage" | first | value) (query "teuthis_resource_threshold" | first | value) }}CPU usage is {{ printf "%.1f" (query "teuthis_cpu_usage * 100" | first | value) }}%{{ end }}
+            {{ if gt (query "teuthis_memory_usage" | first | value) (query "teuthis_resource_threshold" | first | value) }}Memory usage is {{ printf "%.1f" (query "teuthis_memory_usage * 100" | first | value) }}%{{ end }}
+            {{ if gt (query "teuthis_disk_usage" | first | value) (query "teuthis_resource_threshold" | first | value) }}Disk usage is {{ printf "%.1f" (query "teuthis_disk_usage * 100" | first | value) }}%{{ end }}
+
+  - name: teuthis_performance
+    rules:
+      - alert: TeuthisRequestLatencyHigh
+        expr: histogram_quantile(0.95, rate(teuthis_publish_latency_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: teuthis
+        annotations:
+          summary: "Teuthis request latency is high"
+          description: "95th percentile latency is {{ $value }}s"
+          
+      - alert: TeuthisErrorRateHigh
+        expr: rate(teuthis_messages_errors_total[5m]) / rate(teuthis_messages_total[5m]) * 100 > 5
+        for: 3m
+        labels:
+          severity: critical
+          service: teuthis
+        annotations:
+          summary: "Teuthis error rate is high"
+          description: "Error rate is {{ $value }}%"
+          
+      - alert: TeuthisNoConnections
+        expr: teuthis_active_connections == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: teuthis
+        annotations:
+          summary: "Teuthis has no active connections"
+          description: "No active connections for 10 minutes - service may be down"

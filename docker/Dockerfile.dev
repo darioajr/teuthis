@@ -1,0 +1,52 @@
+# Development Dockerfile for Teuthis Netty server
+FROM eclipse-temurin:21-jdk-alpine
+
+# Install development tools
+RUN apk add --no-cache \
+    curl \
+    bash \
+    git \
+    vim \
+    htop \
+    netcat-openbsd \
+    jq \
+    netstat-nat && \
+    # Create development user
+    addgroup -g 1000 developer && \
+    adduser -D -s /bin/bash -u 1000 -G developer developer
+
+# Set environment variables
+ENV JAVA_HOME=/opt/java/openjdk
+
+# Switch to developer user
+USER developer
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy Maven wrapper and make it executable
+COPY --chown=developer:developer mvnw mvnw.cmd ./
+COPY --chown=developer:developer .mvn .mvn/
+RUN chmod +x ./mvnw
+
+# Copy pom.xml for dependency resolution
+COPY --chown=developer:developer pom.xml ./
+
+# Download dependencies
+RUN ./mvnw dependency:go-offline -B
+
+# Copy source code
+COPY --chown=developer:developer . .
+
+# Environment variables for development
+ENV SERVER_PORT=8080 \
+    KAFKA_BOOTSTRAP_SERVERS=kafka:29092 \
+    SCHEMA_REGISTRY_URL=http://schema-registry:8081 \
+    NETTY_BOSS_THREADS=1 \
+    NETTY_WORKER_THREADS=0
+
+# Expose ports for development (including debug port)
+EXPOSE 8080 5005
+
+# Default command for development with debug enabled
+CMD ["./mvnw", "exec:java", "-Dexec.mainClass=com.github.darioajr.teuthis.TeuthisApplication", "-Dexec.args='--debug'", "-Dexec.jvmArguments='-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005'"]

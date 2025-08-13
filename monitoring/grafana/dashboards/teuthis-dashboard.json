@@ -1,0 +1,295 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Teuthis - Kafka Producer Monitoring",
+    "tags": ["teuthis", "kafka", "netty", "performance"],
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🔗 Conexões Ativas",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "teuthis_active_connections",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "📈 Requests/sec",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(teuthis_requests_total[5m])",
+            "refId": "A",
+            "legendFormat": "{{method}} {{status}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 9, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "🏥 Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"teuthis\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"options": {"0": {"text": "DOWN"}}, "type": "value"},
+              {"options": {"1": {"text": "UP"}}, "type": "value"}
+            ],
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 3, "x": 15, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "📡 Mensagens para Kafka",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(teuthis_messages_total[5m])",
+            "refId": "A",
+            "legendFormat": "{{topic}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "msgs/sec"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "⚡ Latência de Publicação",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(teuthis_publish_latency_seconds_bucket[5m]))",
+            "refId": "A",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(teuthis_publish_latency_seconds_bucket[5m]))",
+            "refId": "B",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "💻 Uso de Recursos do Sistema",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "teuthis_cpu_usage * 100",
+            "refId": "A",
+            "legendFormat": "CPU %"
+          },
+          {
+            "expr": "teuthis_memory_usage * 100",
+            "refId": "B",
+            "legendFormat": "Memory %"
+          },
+          {
+            "expr": "teuthis_disk_usage * 100",
+            "refId": "C",
+            "legendFormat": "Disk %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 70},
+                {"color": "orange", "value": 80},
+                {"color": "red", "value": "{{ teuthis_resource_threshold * 100 }}"}
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "CPU %"},
+              "properties": [
+                {"id": "color", "value": {"mode": "palette-classic"}}
+              ]
+            }
+          ]
+        },
+        "options": {
+          "tooltip": {"mode": "multi", "sort": "none"},
+          "legend": {"displayMode": "table", "placement": "bottom"}
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "🚨 Status de Recursos (Gauges)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "teuthis_cpu_usage * 100",
+            "refId": "A",
+            "legendFormat": "CPU"
+          },
+          {
+            "expr": "teuthis_memory_usage * 100",
+            "refId": "B", 
+            "legendFormat": "Memory"
+          },
+          {
+            "expr": "teuthis_disk_usage * 100",
+            "refId": "C",
+            "legendFormat": "Disk"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 70},
+                {"color": "orange", "value": 80},
+                {"color": "red", "value": 85}
+              ]
+            }
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "⚠️ Alertas de Recursos",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(teuthis_cpu_usage > scalar(teuthis_resource_threshold)) or (teuthis_memory_usage > scalar(teuthis_resource_threshold)) or (teuthis_disk_usage > scalar(teuthis_resource_threshold))",
+            "refId": "A",
+            "legendFormat": "Recursos Críticos"
+          },
+          {
+            "expr": "teuthis_resource_threshold * 100",
+            "refId": "B",
+            "legendFormat": "Threshold Configurado (%)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [
+              {"options": {"0": {"text": "OK"}}, "type": "value"},
+              {"options": {"1": {"text": "CRÍTICO"}}, "type": "value"}
+            ],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "red", "value": 1}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "❌ Taxa de Erro",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(teuthis_messages_errors_total[5m]) / rate(teuthis_messages_total[5m]) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 16}
+      }
+    ]
+  }
+}

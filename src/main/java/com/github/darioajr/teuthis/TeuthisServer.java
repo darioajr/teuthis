@@ -15,8 +15,6 @@ import java.util.concurrent.Executors;
 
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -27,9 +25,16 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import com.github.darioajr.teuthis.avro.Message;
+import com.github.darioajr.teuthis.infra.AsyncResourceMonitor;
+import com.github.darioajr.teuthis.infra.CircuitBreakerManager;
 import com.github.darioajr.teuthis.infra.Config;
 import com.github.darioajr.teuthis.infra.Metrics;
 import com.github.darioajr.teuthis.infra.MetricsHandler;
+import com.github.darioajr.teuthis.infra.ObjectPools;
+import com.github.darioajr.teuthis.security.AuthenticationHandler;
+import com.github.darioajr.teuthis.security.RateLimitHandler;
+import com.github.darioajr.teuthis.security.SecurityHeadersHandler;
+import com.github.darioajr.teuthis.security.ValidationHandler;
 import com.sun.management.OperatingSystemMXBean;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -118,7 +123,11 @@ public class TeuthisServer {
                      ch.pipeline().addLast(
                        new HttpServerCodec(),
                        new HttpObjectAggregator(64 * 1024),
+                       new SecurityHeadersHandler(),
                        new MetricsHandler(),
+                       new RateLimitHandler(),
+                       new AuthenticationHandler(),
+                       new ValidationHandler(),
                        new PublishHandler()
                      );
                  }
@@ -139,6 +148,8 @@ public class TeuthisServer {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
             kafkaExecutor.shutdown();
+            AsyncResourceMonitor.shutdown();
+            ObjectPools.clearThreadLocalCaches();
             logger.info("✅ Server shutdown completed");
         }
     }
@@ -270,7 +281,7 @@ public class TeuthisServer {
                     return;
                 }
                 
-                String resourceLimitMessage = checkResourceUsage();
+                String resourceLimitMessage = AsyncResourceMonitor.checkResourceLimits();
                 if (resourceLimitMessage != null) {
                     logger.warn("⚠️ Resource usage high, rejecting request {} for topic {}: {}", requestId, topic, resourceLimitMessage);
                     sendError(ctx, HttpResponseStatus.TOO_MANY_REQUESTS, resourceLimitMessage, RETRY_AFTER);
@@ -308,9 +319,10 @@ public class TeuthisServer {
                 }
                 
                 byte[] avroBytes;
-                try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                    DatumWriter<Message> w = new SpecificDatumWriter<>(Message.class);
-                    BinaryEncoder enc = EncoderFactory.get().binaryEncoder(out, null);
+                ByteArrayOutputStream out = ObjectPools.getBuffer();
+                try {
+                    DatumWriter<Message> w = ObjectPools.getAvroWriter();
+                    BinaryEncoder enc = ObjectPools.getEncoder(out);
                     w.write(msg, enc);
                     enc.flush();
                     avroBytes = out.toByteArray();
@@ -341,7 +353,7 @@ public class TeuthisServer {
                     try {
                         logger.debug("🚀 Submitting message to Kafka producer for request {}", requestId);
                         
-                        RecordMetadata md = producer.send(record).get();
+                        RecordMetadata md = CircuitBreakerManager.sendWithProtection(producer, record).get();
                         long duration = System.nanoTime() - requestStartTime;
                         
                         // Record metrics safely

@@ -70,4 +70,35 @@ public class Metrics {
             .name("teuthis_kafka_connection_status")
             .help("Kafka connection status (1=connected, 0=disconnected)")
             .register();
+    
+    // Queue cleanup metrics
+    public static final Counter queueCleanupTotal = Counter.build()
+            .name("teuthis_queue_cleanup_total")
+            .help("Total number of queue cleanup operations")
+            .labelNames("topic", "status")
+            .register();
+    
+    public static final Histogram queueCleanupDuration = Histogram.build()
+            .name("teuthis_queue_cleanup_duration_seconds")
+            .help("Duration of queue cleanup operations in seconds")
+            .labelNames("topic")
+            .buckets(1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0)
+            .register();
+    
+    public static final Gauge activeCleanups = Gauge.build()
+            .name("teuthis_active_cleanups")
+            .help("Number of active queue cleanup operations")
+            .register();
+    
+    /**
+     * Records a queue cleanup operation metric.
+     */
+    public void recordQueueCleanup(String topicName, long durationMs, boolean success) {
+        String status = success ? "success" : "error";
+        queueCleanupTotal.labels(topicName, status).inc();
+        
+        if (success) {
+            queueCleanupDuration.labels(topicName).observe(durationMs / 1000.0);
+        }
+    }
 }

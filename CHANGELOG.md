@@ -5,6 +5,47 @@ All notable changes to the Teuthis project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## 0.2.0 - 2025-08-24
+
+### Added
+- **Queue Cleanup API**: Safe and performant queue cleanup functionality
+  - `DELETE /queue/{topicName}` - Clean specific queue with producer shutdown
+  - `GET /queue/status` - Monitor active cleanup operations
+  - Asynchronous processing without blocking main operations
+  - Circuit breaker protection for admin operations
+  - JWT authentication support for cleanup operations
+  - Comprehensive input validation and sanitization
+
+- **New Components**
+  - `QueueCleanupManager.java` - Core cleanup logic with safe producer shutdown
+  - `QueueCleanupHandler.java` - HTTP endpoint handler for cleanup operations
+  - `QueueCleanupResult.java` - Result object for cleanup operations
+
+- **Enhanced Metrics**
+  - `teuthis_queue_cleanup_total` - Total cleanup operations by topic and status
+  - `teuthis_queue_cleanup_duration_seconds` - Cleanup operation duration
+  - `teuthis_active_cleanups` - Number of active cleanup operations
+
+- **Configuration**
+  - `teuthis.queue.cleanup.enabled` - Enable/disable queue cleanup feature
+  - `teuthis.queue.cleanup.producer.shutdown.timeout` - Producer shutdown timeout
+  - `teuthis.queue.cleanup.max.concurrent` - Maximum concurrent cleanup operations
+  - `teuthis.queue.cleanup.auth.required` - Require authentication for cleanup
+
+### Changed
+- **Version**: Updated to 0.2.0-SNAPSHOT
+- **Netty Pipeline**: Added QueueCleanupHandler before PublishHandler
+- **AdminClient Integration**: Added Kafka AdminClient for queue management operations
+
+### Technical Details
+- **Safe Producer Shutdown**: Ensures all pending messages are flushed before cleanup
+- **Async Processing**: Non-blocking cleanup operations with CompletableFuture
+- **Resource Management**: Proper cleanup of threads and connections
+- **Security**: Optional JWT authentication with configurable requirements
+- **Monitoring**: Full observability with Prometheus metrics and structured logging
+
 ## 0.1.0 - 2025-08-24
 
 ### Added

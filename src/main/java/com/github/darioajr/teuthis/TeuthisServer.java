@@ -15,6 +15,8 @@ import java.util.concurrent.Executors;
 
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumWriter;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -35,6 +37,8 @@ import com.github.darioajr.teuthis.security.AuthenticationHandler;
 import com.github.darioajr.teuthis.security.RateLimitHandler;
 import com.github.darioajr.teuthis.security.SecurityHeadersHandler;
 import com.github.darioajr.teuthis.security.ValidationHandler;
+import com.github.darioajr.teuthis.queue.QueueCleanupManager;
+import com.github.darioajr.teuthis.queue.QueueCleanupHandler;
 import com.sun.management.OperatingSystemMXBean;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -113,6 +117,11 @@ public class TeuthisServer {
         try (Producer<String, byte[]> kafkaProducer = createProducer()) {
             producer = kafkaProducer;
             
+            // Initialize queue cleanup manager
+            QueueCleanupManager cleanupManager = new QueueCleanupManager(
+                createAdminClient(), kafkaProducer, new Metrics()
+            );
+            
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
              .channel(NioServerSocketChannel.class)
@@ -128,6 +137,7 @@ public class TeuthisServer {
                        new RateLimitHandler(),
                        new AuthenticationHandler(),
                        new ValidationHandler(),
+                       new QueueCleanupHandler(cleanupManager),
                        new PublishHandler()
                      );
                  }
@@ -151,6 +161,22 @@ public class TeuthisServer {
             AsyncResourceMonitor.shutdown();
             ObjectPools.clearThreadLocalCaches();
             logger.info("✅ Server shutdown completed");
+        }
+    }
+
+    private static AdminClient createAdminClient() {
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, Config.str("kafka.bootstrap.servers"));
+        props.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "30000");
+        props.put(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "60000");
+        
+        try {
+            AdminClient adminClient = AdminClient.create(props);
+            logger.info("✅ Kafka AdminClient created successfully");
+            return adminClient;
+        } catch (Exception e) {
+            logger.error("❌ Failed to create Kafka AdminClient: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to initialize Kafka AdminClient", e);
         }
     }
 
